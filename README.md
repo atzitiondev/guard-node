@@ -22,4 +22,4 @@ Este proyecto proporciona un nodo para la app **Guard**. El servidor gestiona la
      -H "Content-Type: application/json" \
      -d '{"address": "https://guard.buzzster.co.uk"}'
 
-    Añade https://guard.buzzster.co.uk y tantos nodo como quieras.
+3. Añade https://guard.buzzster.co.uk y tantos nodos como quieras.
