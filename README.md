@@ -18,7 +18,8 @@ Este proyecto proporciona un nodo para la app **Guard**. El servidor gestiona la
    npm start
 
 2. Para añadir un peer a tu nodo usa:
-   ```curl -X POST http://localhost:3000/addNode \
+   ```
+   curl -X POST http://localhost:3000/addNode \
      -H "Content-Type: application/json" \
      -d '{"address": "https://guard.buzzster.co.uk"}'
 

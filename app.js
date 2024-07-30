@@ -1,9 +1,11 @@
+// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Block, Blockchain } = require('./blockchain'); // Importa la clase Block
+const { Block, Blockchain } = require('./blockchain');
+const axios = require('axios');
 
 const app = express();
-const port = 3000;
+const port = 3333;
 
 app.use(bodyParser.json());
 
@@ -13,7 +15,6 @@ app.get('/', (req, res) => {
   res.send('Guard Node corriendo');
 });
 
-// Ruta para agregar un número bloqueado
 app.post('/block', (req, res) => {
     const { number, reason } = req.body;
     const latestBlock = blockchain.getLatestBlock();
@@ -27,23 +28,43 @@ app.post('/block', (req, res) => {
     res.status(201).send('Number blocked');
 });
 
-// Ruta para consultar todos los números bloqueados
 app.get('/blocked', (req, res) => {
     const blocks = blockchain.chain.map(block => block.data);
     res.json(blocks);
 });
 
-// Ruta para agregar un nodo
-app.post('/addNode', (req, res) => {
+app.post('/addNode', async (req, res) => {
     const { nodeUrl } = req.body;
     blockchain.addNode(nodeUrl);
+    await syncWithNode(nodeUrl);
     res.status(201).send('Node added');
 });
 
-// Ruta para consultar nodos
 app.get('/nodes', (req, res) => {
     res.json(blockchain.getNodes());
 });
+
+const syncWithNode = async (nodeUrl) => {
+    try {
+        const response = await axios.get(`${nodeUrl}/blocked`);
+        const remoteBlocks = response.data;
+
+        if (remoteBlocks.length > 0) {
+            // Reconstruct the remote blockchain
+            const remoteChain = remoteBlocks.map((data, index) => {
+                if (index === 0) return blockchain.createGenesisBlock(); // Use the genesis block
+                return new Block(index, blockchain.chain[index - 1].hash, new Date().toISOString(), data, "");
+            });
+
+            // Check if the remote chain is longer and valid
+            if (remoteChain.length > blockchain.chain.length && blockchain.isValidChain(remoteChain)) {
+                blockchain.replaceChain(remoteChain);
+            }
+        }
+    } catch (e) {
+        console.error("Error al conectar con el nodo:", e.message);
+    }
+};
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

@@ -1,3 +1,4 @@
+// blockchain.js
 const crypto = require('crypto');
 
 class Block {
@@ -17,7 +18,8 @@ class Blockchain {
     }
 
     createGenesisBlock() {
-        return new Block(0, "0", new Date().toISOString(), "Genesis Block", this.calculateHash(0, "0", new Date().toISOString(), "Genesis Block"));
+        const timestamp = new Date().toISOString();
+        return new Block(0, "0", timestamp, "Genesis Block", this.calculateHash(0, "0", timestamp, "Genesis Block"));
     }
 
     calculateHash(index, previousHash, timestamp, data) {
@@ -30,7 +32,12 @@ class Blockchain {
 
     addBlock(newBlock) {
         newBlock.hash = this.calculateHash(newBlock.index, newBlock.previousHash, newBlock.timestamp, newBlock.data);
-        this.chain.push(newBlock);
+        const latestBlock = this.getLatestBlock();
+        if (latestBlock.index + 1 === newBlock.index && latestBlock.hash === newBlock.previousHash) {
+            this.chain.push(newBlock);
+        } else {
+            console.error("Error: El nuevo bloque no sigue correctamente la cadena de bloques.");
+        }
     }
 
     addNode(nodeUrl) {
@@ -39,6 +46,15 @@ class Blockchain {
 
     getNodes() {
         return Array.from(this.nodes);
+    }
+
+    replaceChain(newChain) {
+        this.chain = newChain;
+        console.log("Chain has been replaced with the new chain");
+    }
+
+    isValidChain(chain) {
+        return true;
     }
 }
 
