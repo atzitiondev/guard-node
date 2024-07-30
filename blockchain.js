@@ -17,6 +17,10 @@ class Blockchain {
         this.nodes = new Set();
     }
 
+    isNumberReported(number) {
+        return this.chain.some(block => block.data.number === number);
+    }
+
     createGenesisBlock() {
         const timestamp = new Date().toISOString();
         return new Block(0, "0", timestamp, "Genesis Block", this.calculateHash(0, "0", timestamp, "Genesis Block"));

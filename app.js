@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Block, Blockchain } = require('./blockchain');
@@ -15,8 +14,17 @@ app.get('/', (req, res) => {
   res.send('Guard Node corriendo');
 });
 
-app.post('/block', (req, res) => {
+app.get('/chain', (req, res) => {
+    const blocks = blockchain.chain;
+    res.json(blocks);
+});
+
+app.post('/report', (req, res) => {
     const { number, reason } = req.body;
+    if (blockchain.isNumberReported(number)) {
+        return res.status(400).send('Número ya bloqueado');
+    }
+
     const latestBlock = blockchain.getLatestBlock();
     const newBlock = new Block(
         latestBlock.index + 1,
@@ -25,10 +33,10 @@ app.post('/block', (req, res) => {
         { number, reason }
     );
     blockchain.addBlock(newBlock);
-    res.status(201).send('Number blocked');
+    res.status(201).send('Número bloqueado');
 });
 
-app.get('/blocked', (req, res) => {
+app.get('/reported', (req, res) => {
     const blocks = blockchain.chain.map(block => block.data);
     res.json(blocks);
 });
@@ -37,7 +45,7 @@ app.post('/addNode', async (req, res) => {
     const { nodeUrl } = req.body;
     blockchain.addNode(nodeUrl);
     await syncWithNode(nodeUrl);
-    res.status(201).send('Node added');
+    res.status(201).send('Nodo añadido');
 });
 
 app.get('/nodes', (req, res) => {
@@ -46,19 +54,29 @@ app.get('/nodes', (req, res) => {
 
 const syncWithNode = async (nodeUrl) => {
     try {
-        const response = await axios.get(`${nodeUrl}/blocked`);
-        const remoteBlocks = response.data;
+        const response = await axios.get(`${nodeUrl}/chain`);
+        const remoteChain = response.data;
 
-        if (remoteBlocks.length > 0) {
-            // Reconstruct the remote blockchain
-            const remoteChain = remoteBlocks.map((data, index) => {
-                if (index === 0) return blockchain.createGenesisBlock(); // Use the genesis block
-                return new Block(index, blockchain.chain[index - 1].hash, new Date().toISOString(), data, "");
-            });
+        if (remoteChain.length > blockchain.chain.length && blockchain.isValidChain(remoteChain)) {
+            // Replace the chain with the remote chain
+            blockchain.replaceChain(remoteChain);
+        }
 
-            // Check if the remote chain is longer and valid
-            if (remoteChain.length > blockchain.chain.length && blockchain.isValidChain(remoteChain)) {
-                blockchain.replaceChain(remoteChain);
+        const remoteBlocks = response.data.map(block => block.data);
+        const localBlockedNumbers = new Set(blockchain.chain.map(block => block.data.number));
+
+        // Add only unique blocked numbers from the remote chain
+        for (const block of remoteBlocks) {
+            if (!localBlockedNumbers.has(block.number)) {
+                const latestBlock = blockchain.getLatestBlock();
+                const newBlock = new Block(
+                    latestBlock.index + 1,
+                    latestBlock.hash,
+                    new Date().toISOString(),
+                    block
+                );
+                blockchain.addBlock(newBlock);
+                localBlockedNumbers.add(block.number); // Update local set
             }
         }
     } catch (e) {
