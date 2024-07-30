@@ -84,6 +84,21 @@ const syncWithNode = async (nodeUrl) => {
     }
 };
 
+// Tarea de sincronización periódica
+const syncInterval = 60000; // Cada 60 segundos
+
+const startPeriodicSync = () => {
+    setInterval(async () => {
+        const nodes = blockchain.getNodes();
+        for (const nodeUrl of nodes) {
+            await syncWithNode(nodeUrl);
+        }
+    }, syncInterval);
+};
+
+// Iniciar la sincronización periódica al arrancar el servidor
+startPeriodicSync();
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
